@@ -65,6 +65,10 @@ void Error_Handler(void);
 #define USART_RX_GPIO_Port GPIOA
 #define Logic_Analyzer_Input_Pin GPIO_PIN_6
 #define Logic_Analyzer_Input_GPIO_Port GPIOA
+#define PN532_IRQ_Pin GPIO_PIN_6
+#define PN532_IRQ_GPIO_Port GPIOC
+#define PN532_RSTO_Pin GPIO_PIN_7
+#define PN532_RSTO_GPIO_Port GPIOC
 #define LED_Output_Pin GPIO_PIN_8
 #define LED_Output_GPIO_Port GPIOC
 #define ESP32_TX_Pin GPIO_PIN_9

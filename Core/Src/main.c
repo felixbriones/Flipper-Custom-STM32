@@ -19,6 +19,17 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include <stdio.h>
+
+// TODO: Move NFC-related functions and macros to separate nfc files
+#define NFC_MAX_OUTPUT_BUFFER_SIZE 255 // Note: Non-data fields use 8 bytes. Data field can be 247 bytes max
+#define NFC_TRANSMIT_PREAMBLE  0x00
+#define NFC_TRANSMIT_START1    0x00
+#define NFC_TRANSMIT_START2    0xFF
+#define NFC_TRANSMIT_TO_STM    0xD5
+#define NFC_TRANSMIT_TO_PN     0xD4
+#define NFC_TRANSMIT_POSTAMBLE 0x00
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -413,7 +424,7 @@ static void MX_GPIO_Init(void) {
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 
 	/*Configure GPIO pin Output Level */
-	HAL_GPIO_WritePin(LED_Output_GPIO_Port, LED_Output_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOC, PN532_IRQ_Pin | LED_Output_Pin, GPIO_PIN_RESET);
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(GPIOB,
@@ -441,12 +452,18 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-	/*Configure GPIO pin : LED_Output_Pin */
-	GPIO_InitStruct.Pin = LED_Output_Pin;
+	/*Configure GPIO pins : PN532_IRQ_Pin LED_Output_Pin */
+	GPIO_InitStruct.Pin = PN532_IRQ_Pin | LED_Output_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(LED_Output_GPIO_Port, &GPIO_InitStruct);
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : PN532_RSTO_Pin */
+	GPIO_InitStruct.Pin = PN532_RSTO_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(PN532_RSTO_GPIO_Port, &GPIO_InitStruct);
 
 	/*Configure GPIO pins : WWZMDiB_SD_CS_Pin PN532_NFC_CS_Pin NRF24L01_CS_Pin
 	 * CC1101_CS_Pin */
@@ -459,6 +476,89 @@ static void MX_GPIO_Init(void) {
 
 	/* USER CODE BEGIN MX_GPIO_Init_2 */
 	/* USER CODE END MX_GPIO_Init_2 */
+}
+
+/**
+ * @brief  Resets PN532 NFC module via RSTO line
+ * @param  argument: Not used
+ * @retval None
+ */
+static void NfcReset(void)
+{
+	HAL_GPIO_WritePin(PN532_RSTO_GPIO_Port, PN532_RSTO_Pin, GPIO_PIN_RESET);
+	osDelay(2);
+	HAL_GPIO_WritePin(PN532_RSTO_GPIO_Port, PN532_RSTO_Pin, GPIO_PIN_SET);
+	osDelay(100);
+}
+
+static HAL_StatusTypeDef NfcSendCommand(uint8_t* command, uint16_t commandSize)
+{
+	HAL_StatusTypeDef retValue;
+
+	HAL_GPIO_WritePin(GPIOB, PN532_NFC_CS_Pin, GPIO_PIN_RESET);
+	retValue = HAL_SPI_Transmit(&hspi2, command, commandSize, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(GPIOB, PN532_NFC_CS_Pin, GPIO_PIN_SET);
+	return retValue;
+}
+
+static HAL_StatusTypeDef NfcReceiveCommand(uint8_t* response, uint16_t responseSize)
+{
+	HAL_StatusTypeDef retValue;
+
+	osDelay(10);
+	HAL_GPIO_WritePin(GPIOB, PN532_NFC_CS_Pin, GPIO_PIN_RESET);
+	retValue = HAL_SPI_Receive(&hspi2, response, responseSize, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(GPIOB, PN532_NFC_CS_Pin, GPIO_PIN_SET);
+
+	// Check for a valid response
+	if(response[0] == NFC_TRANSMIT_TO_STM && response[1] == 0x03)
+	{
+		printf("IC version: %d\r\n", response[2]);
+		printf("Firmware version: %d\r\n", response[3]);
+		printf("Revision version: %d\r\n", response[4]);
+		printf("Support version: %d\r\n", response[5]);
+	}
+	else
+	{
+		printf("NfcReceiveCommand() Invalid response\r\n");
+	}
+
+	return retValue;
+}
+
+static HAL_StatusTypeDef NfcGetFirmwareVersion(void)
+{
+	uint8_t dataSize = 2;
+	uint8_t response = 12;
+	HAL_StatusTypeDef retValue= 0;
+	uint8_t command [] = 
+		{
+			NFC_TRANSMIT_PREAMBLE,  // [PREAMBLE]
+			NFC_TRANSMIT_START1,    // [START CODE]
+			NFC_TRANSMIT_START2, 	// [START CODE]
+			dataSize, 		// [LEN] 
+			(256 - dataSize), 	// [LCS] Checksum (256 - length)
+			NFC_TRANSMIT_TO_PN,	// [DATA] (TFI)
+			0x02,			// [DATA] (PD0)
+			0x2A,			// [DCS] Checksum (TFI + PD0 + ... PDn + DCS == 0) (0xD6 + 0x2A)
+			NFC_TRANSMIT_POSTAMBLE,	// [POSTAMBLE] Always 0x00
+		}; 
+
+	retValue = NfcSendCommand(command, sizeof(command));
+	if(retValue != HAL_OK)
+	{
+		printf("NfcSendCommand() error code: %d\r\n", retValue);
+		return retValue;
+	}
+
+	retValue = NfcReceiveCommand(command, sizeof(command));
+	if(retValue != HAL_OK)
+	{
+		printf("NfcReceiveCommand() error code: %d\r\n", retValue);
+		return retValue;
+	}
+
+	return retValue;
 }
 
 /* USER CODE BEGIN 4 */
