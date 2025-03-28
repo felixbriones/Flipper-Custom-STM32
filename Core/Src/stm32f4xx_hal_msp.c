@@ -61,7 +61,8 @@ extern DMA_HandleTypeDef hdma_tim3_ch4_up;
 /**
  * Initializes the Global MSP.
  */
-void HAL_MspInit(void) {
+void HAL_MspInit(void)
+{
 
 	/* USER CODE BEGIN MspInit 0 */
 
@@ -85,9 +86,11 @@ void HAL_MspInit(void) {
  * @param hi2c: I2C handle pointer
  * @retval None
  */
-void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c) {
+void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
+{
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	if (hi2c->Instance == I2C1) {
+	if (hi2c->Instance == I2C1)
+	{
 		/* USER CODE BEGIN I2C1_MspInit 0 */
 
 		/* USER CODE END I2C1_MspInit 0 */
@@ -118,8 +121,10 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c) {
  * @param hi2c: I2C handle pointer
  * @retval None
  */
-void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c) {
-	if (hi2c->Instance == I2C1) {
+void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
+{
+	if (hi2c->Instance == I2C1)
+	{
 		/* USER CODE BEGIN I2C1_MspDeInit 0 */
 
 		/* USER CODE END I2C1_MspDeInit 0 */
@@ -146,9 +151,11 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c) {
  * @param hspi: SPI handle pointer
  * @retval None
  */
-void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi) {
+void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
+{
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	if (hspi->Instance == SPI2) {
+	if (hspi->Instance == SPI2)
+	{
 		/* USER CODE BEGIN SPI2_MspInit 0 */
 
 		/* USER CODE END SPI2_MspInit 0 */
@@ -180,8 +187,10 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi) {
  * @param hspi: SPI handle pointer
  * @retval None
  */
-void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi) {
-	if (hspi->Instance == SPI2) {
+void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
+{
+	if (hspi->Instance == SPI2)
+	{
 		/* USER CODE BEGIN SPI2_MspDeInit 0 */
 
 		/* USER CODE END SPI2_MspDeInit 0 */
@@ -207,8 +216,10 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi) {
  * @param htim_oc: TIM_OC handle pointer
  * @retval None
  */
-void HAL_TIM_OC_MspInit(TIM_HandleTypeDef *htim_oc) {
-	if (htim_oc->Instance == TIM3) {
+void HAL_TIM_OC_MspInit(TIM_HandleTypeDef *htim_oc)
+{
+	if (htim_oc->Instance == TIM3)
+	{
 		/* USER CODE BEGIN TIM3_MspInit 0 */
 
 		/* USER CODE END TIM3_MspInit 0 */
@@ -227,7 +238,8 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef *htim_oc) {
 		hdma_tim3_ch4_up.Init.Mode = DMA_CIRCULAR;
 		hdma_tim3_ch4_up.Init.Priority = DMA_PRIORITY_HIGH;
 		hdma_tim3_ch4_up.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-		if (HAL_DMA_Init(&hdma_tim3_ch4_up) != HAL_OK) {
+		if (HAL_DMA_Init(&hdma_tim3_ch4_up) != HAL_OK)
+		{
 			Error_Handler();
 		}
 
@@ -249,8 +261,10 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef *htim_oc) {
  * @param htim_oc: TIM_OC handle pointer
  * @retval None
  */
-void HAL_TIM_OC_MspDeInit(TIM_HandleTypeDef *htim_oc) {
-	if (htim_oc->Instance == TIM3) {
+void HAL_TIM_OC_MspDeInit(TIM_HandleTypeDef *htim_oc)
+{
+	if (htim_oc->Instance == TIM3)
+	{
 		/* USER CODE BEGIN TIM3_MspDeInit 0 */
 
 		/* USER CODE END TIM3_MspDeInit 0 */
@@ -272,9 +286,11 @@ void HAL_TIM_OC_MspDeInit(TIM_HandleTypeDef *htim_oc) {
  * @param huart: UART handle pointer
  * @retval None
  */
-void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
+void HAL_UART_MspInit(UART_HandleTypeDef *huart)
+{
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	if (huart->Instance == USART1) {
+	if (huart->Instance == USART1)
+	{
 		/* USER CODE BEGIN USART1_MspInit 0 */
 
 		/* USER CODE END USART1_MspInit 0 */
@@ -299,7 +315,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
 		/* USER CODE BEGIN USART1_MspInit 1 */
 
 		/* USER CODE END USART1_MspInit 1 */
-	} else if (huart->Instance == USART2) {
+	}
+	else if (huart->Instance == USART2)
+	{
 		/* USER CODE BEGIN USART2_MspInit 0 */
 
 		/* USER CODE END USART2_MspInit 0 */
@@ -330,8 +348,10 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
  * @param huart: UART handle pointer
  * @retval None
  */
-void HAL_UART_MspDeInit(UART_HandleTypeDef *huart) {
-	if (huart->Instance == USART1) {
+void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
+{
+	if (huart->Instance == USART1)
+	{
 		/* USER CODE BEGIN USART1_MspDeInit 0 */
 
 		/* USER CODE END USART1_MspDeInit 0 */
@@ -350,7 +370,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef *huart) {
 		/* USER CODE BEGIN USART1_MspDeInit 1 */
 
 		/* USER CODE END USART1_MspDeInit 1 */
-	} else if (huart->Instance == USART2) {
+	}
+	else if (huart->Instance == USART2)
+	{
 		/* USER CODE BEGIN USART2_MspDeInit 0 */
 
 		/* USER CODE END USART2_MspDeInit 0 */
