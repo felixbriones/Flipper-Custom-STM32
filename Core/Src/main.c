@@ -19,17 +19,20 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 // TODO: Move NFC-related functions and macros to separate nfc files
-#define NFC_MAX_OUTPUT_BUFFER_SIZE 255 // Note: Non-data fields use 8 bytes. Data field can be 247 bytes max
-#define NFC_TRANSMIT_PREAMBLE  0x00
-#define NFC_TRANSMIT_START1    0x00
-#define NFC_TRANSMIT_START2    0xFF
-#define NFC_TRANSMIT_TO_STM    0xD5
-#define NFC_TRANSMIT_TO_PN     0xD4
+#define NFC_MAX_OUTPUT_BUFFER_SIZE                                             \
+	255 // Note: Non-data fields use 8 bytes. Data field can be 247 bytes max
+#define NFC_TRANSMIT_PREAMBLE 0x00
+#define NFC_TRANSMIT_START1 0x00
+#define NFC_TRANSMIT_START2 0xFF
+#define NFC_TRANSMIT_TO_STM 0xD5
+#define NFC_TRANSMIT_TO_PN 0xD4
 #define NFC_TRANSMIT_POSTAMBLE 0x00
-
+#define UART_PRINT_BUFFER 128
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -71,8 +74,6 @@ const osThreadAttr_t defaultTask_attributes = {
 };
 /* USER CODE BEGIN PV */
 
-/* USER CODE END PV */
-
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -84,14 +85,16 @@ static void MX_USART1_UART_Init(void);
 static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
 
-/* USER CODE BEGIN PFP */
+static void StPrint(const char *format, ...) {
+	char buffer[UART_PRINT_BUFFER];
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
+	va_list args;           // Points to optional arguments on stack
+	va_start(args, format); // args now points to the first optional argument
+	vsnprintf(buffer, sizeof(buffer), format, args); // Format string w/ args
+	va_end(args); // Reset pointer/clean up to avoid possible stack smashing
+	HAL_UART_Transmit(&huart2, (uint8_t *)buffer, strlen(buffer),
+	                  HAL_MAX_DELAY);
+}
 
 /**
  * @brief  The application entry point.
@@ -483,16 +486,15 @@ static void MX_GPIO_Init(void) {
  * @param  argument: Not used
  * @retval None
  */
-static void NfcReset(void)
-{
+static void NfcReset(void) {
 	HAL_GPIO_WritePin(PN532_RSTO_GPIO_Port, PN532_RSTO_Pin, GPIO_PIN_RESET);
 	osDelay(2);
 	HAL_GPIO_WritePin(PN532_RSTO_GPIO_Port, PN532_RSTO_Pin, GPIO_PIN_SET);
 	osDelay(100);
 }
 
-static HAL_StatusTypeDef NfcSendCommand(uint8_t* command, uint16_t commandSize)
-{
+static HAL_StatusTypeDef NfcSendCommand(uint8_t *command,
+                                        uint16_t commandSize) {
 	HAL_StatusTypeDef retValue;
 
 	HAL_GPIO_WritePin(GPIOB, PN532_NFC_CS_Pin, GPIO_PIN_RESET);
@@ -501,8 +503,8 @@ static HAL_StatusTypeDef NfcSendCommand(uint8_t* command, uint16_t commandSize)
 	return retValue;
 }
 
-static HAL_StatusTypeDef NfcReceiveCommand(uint8_t* response, uint16_t responseSize)
-{
+static HAL_StatusTypeDef NfcReceiveCommand(uint8_t *response,
+                                           uint16_t responseSize) {
 	HAL_StatusTypeDef retValue;
 
 	osDelay(10);
@@ -511,50 +513,43 @@ static HAL_StatusTypeDef NfcReceiveCommand(uint8_t* response, uint16_t responseS
 	HAL_GPIO_WritePin(GPIOB, PN532_NFC_CS_Pin, GPIO_PIN_SET);
 
 	// Check for a valid response
-	if(response[0] == NFC_TRANSMIT_TO_STM && response[1] == 0x03)
-	{
-		printf("IC version: %d\r\n", response[2]);
-		printf("Firmware version: %d\r\n", response[3]);
-		printf("Revision version: %d\r\n", response[4]);
-		printf("Support version: %d\r\n", response[5]);
-	}
-	else
-	{
-		printf("NfcReceiveCommand() Invalid response\r\n");
+	if (response[0] == NFC_TRANSMIT_TO_STM && response[1] == 0x03) {
+		StPrint("IC version: %d\r\n", response[2]);
+		StPrint("Firmware version: %d\r\n", response[3]);
+		StPrint("Revision version: %d\r\n", response[4]);
+		StPrint("Support version: %d\r\n", response[5]);
+	} else {
+		StPrint("NfcReceiveCommand() Invalid response\r\n");
 	}
 
 	return retValue;
 }
 
-static HAL_StatusTypeDef NfcGetFirmwareVersion(void)
-{
+static HAL_StatusTypeDef NfcGetFirmwareVersion(void) {
 	uint8_t dataSize = 2;
 	uint8_t response = 12;
-	HAL_StatusTypeDef retValue= 0;
-	uint8_t command [] = 
-		{
-			NFC_TRANSMIT_PREAMBLE,  // [PREAMBLE]
-			NFC_TRANSMIT_START1,    // [START CODE]
-			NFC_TRANSMIT_START2, 	// [START CODE]
-			dataSize, 		// [LEN] 
-			(256 - dataSize), 	// [LCS] Checksum (256 - length)
-			NFC_TRANSMIT_TO_PN,	// [DATA] (TFI)
-			0x02,			// [DATA] (PD0)
-			0x2A,			// [DCS] Checksum (TFI + PD0 + ... PDn + DCS == 0) (0xD6 + 0x2A)
-			NFC_TRANSMIT_POSTAMBLE,	// [POSTAMBLE] Always 0x00
-		}; 
+	HAL_StatusTypeDef retValue = 0;
+	uint8_t command[] = {
+	    NFC_TRANSMIT_PREAMBLE, // [PREAMBLE]
+	    NFC_TRANSMIT_START1,   // [START CODE]
+	    NFC_TRANSMIT_START2,   // [START CODE]
+	    dataSize,              // [LEN]
+	    (256 - dataSize),      // [LCS] Checksum (256 - length)
+	    NFC_TRANSMIT_TO_PN,    // [DATA] (TFI)
+	    0x02,                  // [DATA] (PD0)
+	    0x2A, // [DCS] Checksum (TFI + PD0 + ... PDn + DCS == 0) (0xD6 + 0x2A)
+	    NFC_TRANSMIT_POSTAMBLE, // [POSTAMBLE] Always 0x00
+	};
 
 	retValue = NfcSendCommand(command, sizeof(command));
-	if(retValue != HAL_OK)
-	{
-		printf("NfcSendCommand() error code: %d\r\n", retValue);
+	if (retValue != HAL_OK) {
+		StPrint("NfcSendCommand() error code: %d\r\n", retValue);
 		return retValue;
 	}
 
 	retValue = NfcReceiveCommand(command, sizeof(command));
-	if(retValue != HAL_OK)
-	{
-		printf("NfcReceiveCommand() error code: %d\r\n", retValue);
+	if (retValue != HAL_OK) {
+		StPrint("NfcReceiveCommand() error code: %d\r\n", retValue);
 		return retValue;
 	}
 
@@ -573,15 +568,13 @@ static HAL_StatusTypeDef NfcGetFirmwareVersion(void)
  */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument) {
-	/* USER CODE BEGIN 5 */
+	uint8_t loop = 0;
 	/* Infinite loop */
 	for (;;) {
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
-		osDelay(1000);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
+		StPrint("Hello World!: %d\r\n", loop);
+		loop++;
 		osDelay(1000);
 	}
-	/* USER CODE END 5 */
 }
 
 /**
